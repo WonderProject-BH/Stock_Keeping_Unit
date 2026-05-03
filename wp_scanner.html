@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Wonder Project — Scanner</title>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d0d0f;--surface:#18181c;--surface2:#222228;--border:#2e2e38;
+  --accent:#6366f1;--success:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+  --text:#f4f4f5;--text2:#a1a1aa;--text3:#52525b;
+}
+html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+/* HEADER */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.hdr-title{font-size:16px;font-weight:700}.hdr-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--text3);transition:all .3s}
+.dot.green{background:var(--success);box-shadow:0 0 8px #22c55e66}
+.dot.blue{background:var(--accent);box-shadow:0 0 8px #6366f166}
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin:12px 16px 0}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:500;margin-bottom:10px}
+/* CHANNEL */
+.ch-row{display:flex;gap:8px}
+.ch-inp{flex:1;height:48px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:17px;padding:0 14px;letter-spacing:.08em;text-transform:uppercase}
+.ch-inp:focus{outline:none;border-color:var(--accent)}
+.ch-inp::placeholder{font-family:'DM Sans',sans-serif;font-size:14px;letter-spacing:0;text-transform:none;color:var(--text3)}
+.ch-btn{height:48px;padding:0 20px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
+.ch-btn:active{opacity:.8}
+.sync-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);margin-top:8px}
+.pip{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.pip.on{background:var(--success)}.pip.pulse{background:var(--warn);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* CAMERA */
+.cam-ph{height:220px;border-radius:12px;border:1.5px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text3);margin-bottom:10px}
+.cam-ph .ico{font-size:36px}
+.cam-ph p{font-size:13px;text-align:center;padding:0 20px;line-height:1.5}
+.cam-live{border-radius:12px;overflow:hidden;height:250px;position:relative;display:none;margin-bottom:10px;background:#000}
+#interactive{width:100%;height:100%}
+#interactive video{width:100%;height:100%;object-fit:cover}
+#interactive canvas{display:none}
+.aim{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.aim-box{width:200px;height:110px;border:2px solid rgba(255,255,255,.35);border-radius:8px;position:relative}
+.aim-box::before,.aim-box::after{content:'';position:absolute;width:18px;height:18px;border-style:solid;border-color:var(--accent)}
+.aim-box::before{top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:5px 0 0 0}
+.aim-box::after{bottom:-2px;right:-2px;border-width:0 3px 3px 0;border-radius:0 0 5px 0}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:sl 1.8s linear infinite}
+@keyframes sl{0%{top:0}100%{top:100%}}
+.cam-hint{position:absolute;bottom:10px;width:100%;text-align:center;font-size:12px;color:rgba(255,255,255,.45)}
+/* BTN */
+.big-btn{width:100%;height:52px;border-radius:12px;border:none;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.big-btn:active{opacity:.8}
+.big-btn.blue{background:var(--accent);color:#fff}
+.big-btn.red{background:var(--danger);color:#fff}
+.big-btn.gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.row2{display:flex;gap:8px;margin-top:8px}
+.sm-btn{flex:1;height:42px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.sm-btn:active{opacity:.7}
+/* MANUAL */
+.man-row{display:flex;gap:8px;margin-top:8px}
+.man-inp{flex:1;height:44px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:0 14px}
+.man-inp::placeholder{color:var(--text3)}
+.man-inp:focus{outline:none;border-color:var(--accent)}
+.man-btn{height:44px;padding:0 16px;border-radius:10px;border:none;background:var(--surface2);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;border:1px solid var(--border)}
+.man-btn:active{opacity:.7}
+/* RESULT */
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin:12px 16px 0}
+.result-card.found{border-color:#16a34a44;background:#052e1633}
+.result-card.missing{border-color:#1d4ed844;background:#03102e44}
+.r-tag{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:8px}
+.r-name{font-size:19px;font-weight:700;margin-bottom:6px}
+.r-meta{font-size:13px;color:var(--text2);line-height:1.8}
+.r-badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500;margin-top:8px}
+.ba{background:#14532d44;color:#4ade80;border:1px solid #16a34a44}
+.bb{background:#78350f44;color:#fbbf24;border:1px solid #d9770644}
+.bo{background:#1e293b;color:#94a3b8}
+.act-row{display:flex;gap:8px;margin-top:14px}
+.act-btn{flex:1;height:44px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer}
+.act-btn.bl{background:var(--accent);border-color:var(--accent);color:#fff}
+.act-btn:active{opacity:.75}
+.act-btn:disabled{opacity:.3;cursor:default}
+.r-photo{width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-top:10px}
+/* HISTORY */
+.hist{padding:12px 16px 80px}
+.hist-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:10px;font-weight:500}
+.h-item{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.h-item:last-child{border:none}
+.h-id{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)}
+.h-name{font-size:14px;color:var(--text);margin-top:2px}
+.h-time{font-size:11px;color:var(--text3)}
+.no-hist{font-size:13px;color:var(--text3);text-align:center;padding:16px 0}
+/* OVERLAYS — dark bg, WHITE modal box */
+.overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.92);display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:#fff;border-radius:22px 22px 0 0;padding:24px 22px 40px;width:100%;max-width:460px;color:#111}
+.sh-handle{width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto 20px}
+.sh-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px}
+.ico-blue{background:#ede9fe}.ico-green{background:#dcfce7}.ico-red{background:#fee2e2}
+.sheet h2{font-size:20px;font-weight:700;text-align:center;color:#111;margin-bottom:8px}
+.sheet p{font-size:14px;color:#6b7280;text-align:center;line-height:1.6;margin-bottom:20px}
+.sh-btns{display:flex;flex-direction:column;gap:10px}
+.sh-btn{width:100%;height:52px;border-radius:14px;border:none;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer}
+.sh-btn:active{opacity:.8}
+.sh-btn.blue{background:#6366f1;color:#fff}
+.sh-btn.gray{background:#f3f4f6;color:#374151}
+.sh-btn.green{background:#16a34a;color:#fff}
+.sh-btn.red{background:#dc2626;color:#fff}
+.sh-inp{width:100%;height:50px;border-radius:12px;border:1.5px solid #d1d5db;background:#f9fafb;color:#111;font-family:'DM Sans',sans-serif;font-size:16px;padding:0 16px;margin-bottom:14px}
+.sh-inp:focus{outline:none;border-color:#6366f1}
+.sh-inp::placeholder{color:#9ca3af}
+.sh-label{font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:block}
+/* ADD ITEM FORM in sheet */
+.add-form{text-align:left}
+.add-form .sh-inp{margin-bottom:8px}
+.add-form select.sh-inp{-webkit-appearance:none;appearance:none}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.form-grid .full{grid-column:1/-1}
+/* PHOTO */
+.photo-area{border:2px dashed #d1d5db;border-radius:12px;padding:16px;text-align:center;cursor:pointer;margin-bottom:14px}
+.photo-area:active{background:#f3f4f6}
+.photo-area p{font-size:13px;color:#9ca3af;margin-top:6px}
+.photo-thumb{width:100%;max-height:140px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:none}
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:16px;right:16px;background:#1c1c1e;color:#fff;font-size:14px;padding:13px 18px;border-radius:14px;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;text-align:center}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border:1px solid #16a34a55;color:#4ade80}
+.toast.err{border:1px solid #ef444455;color:#f87171}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div><div class="hdr-title">Wonder Project</div><div class="hdr-sub">Barcode Scanner</div></div>
+  <div class="dot" id="dot"></div>
+</div>
+
+<!-- CHANNEL CONNECT -->
+<div class="card">
+  <div class="card-title">Sync channel</div>
+  <div class="ch-row">
+    <input class="ch-inp" id="chInp" placeholder="Enter code e.g. WP-ABCDEF" maxlength="12" oninput="this.value=this.value.toUpperCase()">
+    <button class="ch-btn" onclick="connectCh()">Connect</button>
+  </div>
+  <div class="sync-pill"><div class="pip" id="pip"></div><span id="pipTxt">Not connected — enter channel code from web app</span></div>
+</div>
+
+<!-- CAMERA -->
+<div class="card">
+  <div class="card-title">Scanner</div>
+  <div class="cam-ph" id="camPh">
+    <div class="ico">&#128247;</div>
+    <p>Connect a channel then tap Start Scanning</p>
+  </div>
+  <div class="cam-live" id="camLive">
+    <div id="interactive"></div>
+    <div class="aim"><div class="aim-box"><div class="scan-line"></div></div></div>
+    <div class="cam-hint">Align barcode within frame</div>
+  </div>
+  <button class="big-btn blue" id="scanBtn" onclick="handleScanBtn()">&#128247; Start scanning</button>
+  <div class="row2">
+    <button class="sm-btn" onclick="openAddItem()">+ Add new item</button>
+    <button class="sm-btn" onclick="openBorrow()">Check out / in</button>
+  </div>
+  <div class="man-row" style="margin-top:10px">
+    <input class="man-inp" id="manInp" placeholder="Or type barcode manually..." onkeydown="if(event.key==='Enter')manLookup()">
+    <button class="man-btn" onclick="manLookup()">Look up</button>
+  </div>
+</div>
+
+<div id="resultWrap"></div>
+
+<div class="hist" id="histWrap">
+  <div class="hist-title">Recent scans</div>
+  <div id="histList"><div class="no-hist">No scans yet</div></div>
+</div>
+
+<!-- CAMERA PERMISSION SHEET -->
+<div class="overlay" id="camSheet">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-icon ico-blue">&#128247;</div>
+    <h2>Allow camera access</h2>
+    <p>Wonder Project needs your camera to scan barcodes. No photos are saved or uploaded anywhere.</p>
+    <div class="sh-btns">
+      <button class="sh-btn blue" onclick="grantCam()">Allow camera access</button>
+      <button class="sh-btn gray" onclick="closeSheet('camSheet')">Not now</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOT FOUND SHEET -->
+<div class="overlay" id="notFoundSheet">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-icon ico-red">&#33;</div>
+    <h2>Not in inventory</h2>
+    <p id="nfTxt"></p>
+    <div class="sh-btns">
+      <button class="sh-btn blue" onclick="copyLast()">Copy barcode ID</button>
+      <button class="sh-btn gray" onclick="closeSheet('notFoundSheet')">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT SHEET -->
+<div class="overlay" id="coSheet">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-icon ico-blue">&#128110;</div>
+    <h2>Who is borrowing this?</h2>
+    <p id="coItemName" style="margin-bottom:16px"></p>
+    <span class="sh-label">Borrower's full name</span>
+    <input class="sh-inp" id="coName" placeholder="e.g. John Martinez">
+    <span class="sh-label">Expected return date</span>
+    <input class="sh-inp" id="coDate" type="date" style="margin-bottom:16px">
+    <div class="sh-btns">
+      <button class="sh-btn blue" onclick="doCheckout()">Confirm checkout</button>
+      <button class="sh-btn gray" onclick="closeSheet('coSheet')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKIN SHEET -->
+<div class="overlay" id="ciSheet">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-icon ico-green">&#10003;</div>
+    <h2>Check item in?</h2>
+    <p id="ciItemName"></p>
+    <div class="sh-btns">
+      <button class="sh-btn green" onclick="doCheckin()">Yes, check in</button>
+      <button class="sh-btn gray" onclick="closeSheet('ciSheet')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ITEM SHEET -->
+<div class="overlay" id="addSheet">
+  <div class="sheet" style="max-height:92vh;overflow-y:auto">
+    <div class="sh-handle"></div>
+    <h2 style="text-align:left;margin-bottom:16px;color:#111">Add new item</h2>
+    <div class="add-form">
+      <div class="photo-area" onclick="document.getElementById('photoFile').click()">
+        <input type="file" id="photoFile" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
+        <img id="photoThumb" class="photo-thumb">
+        <div id="photoPrompt">&#128247; Tap to take photo or choose from library</div>
+        <p id="photoSub">Photo helps identify the item later</p>
+      </div>
+      <div class="form-grid">
+        <div><span class="sh-label">Barcode ID *</span><input class="sh-inp" id="aId" placeholder="BC-0011"></div>
+        <div><span class="sh-label">Item name *</span><input class="sh-inp" id="aName" placeholder="Sony FX3"></div>
+        <div><span class="sh-label">Category</span>
+          <select class="sh-inp" id="aCat">
+            <option>Computer</option><option>Monitor</option><option>Camera</option><option>Mouse</option>
+            <option>Keyboard</option><option>Printer</option><option>Television</option><option>Tablet</option>
+            <option>Microphone</option><option>Stapler</option><option>Phone</option><option>Headphones</option>
+            <option>Cable</option><option>Lighting</option><option>Storage</option><option>Furniture</option><option>Other</option>
+          </select>
+        </div>
+        <div><span class="sh-label">Brand</span><input class="sh-inp" id="aBrand" placeholder="Sony"></div>
+        <div><span class="sh-label">Model #</span><input class="sh-inp" id="aModel" placeholder="FX3"></div>
+        <div><span class="sh-label">Serial #</span><input class="sh-inp" id="aSerial" placeholder="Optional"></div>
+        <div><span class="sh-label">Condition</span>
+          <select class="sh-inp" id="aCond"><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option><option>Damaged</option></select>
+        </div>
+        <div><span class="sh-label">Location</span><input class="sh-inp" id="aLoc" placeholder="Studio A"></div>
+        <div class="full"><span class="sh-label">Notes</span><input class="sh-inp" id="aNotes" placeholder="Optional"></div>
+      </div>
+      <div class="sh-btns">
+        <button class="sh-btn blue" onclick="submitAdd()">Save item</button>
+        <button class="sh-btn gray" onclick="closeSheet('addSheet')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BORROW SHEET -->
+<div class="overlay" id="borrowSheet">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <h2 style="text-align:left;margin-bottom:16px">Check out / in</h2>
+    <span class="sh-label">Barcode ID</span>
+    <input class="sh-inp" id="bId" placeholder="Type or scan barcode">
+    <span class="sh-label">Action</span>
+    <select class="sh-inp" id="bAct" onchange="toggleBorrow()">
+      <option value="out">Check out (borrow)</option>
+      <option value="in">Check in (return)</option>
+    </select>
+    <div id="bExtra">
+      <span class="sh-label">Borrower name</span>
+      <input class="sh-inp" id="bName" placeholder="Full name">
+      <span class="sh-label">Expected return</span>
+      <input class="sh-inp" id="bDate" type="date" style="margin-bottom:14px">
+    </div>
+    <div class="sh-btns">
+      <button class="sh-btn blue" onclick="doBorrow()">Confirm</button>
+      <button class="sh-btn gray" onclick="closeSheet('borrowSheet')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SK='wp_inv_v2', CK2='wp_channel_v2';
+let CHANNEL='', scanning=false, lastCode='', scanHist=[], pendingId='', pendingName='', lastScanned='', addPhotoB64='';
+
+function getItems(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):[]}catch(e){return[]}}
+function putItems(it){try{localStorage.setItem(SK,JSON.stringify(it))}catch(e){}}
+
+// ── Channel connect ───────────────────────────────────────────────────────────
+function connectCh(){
+  const v=document.getElementById('chInp').value.trim().toUpperCase();
+  if(!v||v.length<4){toast('Enter a valid channel code','err');return;}
+  CHANNEL=v;
+  localStorage.setItem(CK2,v);
+  setupSync();
+  toast('Connected to '+v,'ok');
+  document.getElementById('pip').className='pip on';
+  document.getElementById('pipTxt').textContent='Connected to '+v;
+  document.getElementById('dot').className='dot blue';
+}
+
+// ── Sync via localStorage polling (works same-device cross-tab + same phone) ─
+// The web app listens to 'wp_msg_<channel>' key.
+function publish(msg){
+  if(!CHANNEL){toast('Connect a channel first','err');return;}
+  msg.channel=CHANNEL;msg.from='phone';msg.ts=Date.now();
+  // Write to shared localStorage key that web app polls
+  const key='wp_msg_'+CHANNEL;
+  localStorage.setItem(key,JSON.stringify(msg));
+  // Also try BroadcastChannel for same-browser
+  try{const bc=new BroadcastChannel('wp_sync_'+CHANNEL);bc.postMessage(msg);bc.close();}catch(e){}
+}
+
+function setupSync(){
+  // Nothing extra needed — web app polls localStorage
+}
+
+// ── Camera ───────────────────────────────────────────────────────────────────
+function handleScanBtn(){
+  if(scanning){stopScan();return;}
+  document.getElementById('camSheet').classList.add('open');
+}
+function grantCam(){
+  closeSheet('camSheet');
+  startScan();
+}
+function startScan(){
+  document.getElementById('camPh').style.display='none';
+  document.getElementById('camLive').style.display='block';
+  document.getElementById('scanBtn').textContent='⏹ Stop scanning';
+  document.getElementById('scanBtn').className='big-btn red';
+  document.getElementById('dot').className='dot green';
+  Quagga.init({
+    inputStream:{name:'Live',type:'LiveStream',target:document.querySelector('#interactive'),
+      constraints:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}},
+    locator:{patchSize:'medium',halfSample:true},
+    numOfWorkers:2,frequency:10,
+    decoder:{readers:['code_128_reader','ean_reader','ean_8_reader','code_39_reader','upc_reader','upc_e_reader']},
+    locate:true
+  },function(err){
+    if(err){toast('Camera error: '+(err.message||err),'err');stopScan();return;}
+    Quagga.start();scanning=true;
+  });
+  Quagga.onDetected(function(r){
+    const code=r.codeResult.code;
+    if(!code||code===lastCode)return;
+    lastCode=code;setTimeout(()=>{lastCode='';},3000);
+    try{navigator.vibrate&&navigator.vibrate([60]);}catch(e){}
+    stopScan();
+    lookupBarcode(code);
+  });
+}
+function stopScan(){
+  try{Quagga.offDetected();Quagga.stop();}catch(e){}
+  scanning=false;
+  document.getElementById('camPh').style.display='flex';
+  document.getElementById('camLive').style.display='none';
+  document.getElementById('scanBtn').textContent='📷 Start scanning';
+  document.getElementById('scanBtn').className='big-btn blue';
+  document.getElementById('dot').className=CHANNEL?'dot blue':'dot';
+}
+
+function manLookup(){
+  const v=document.getElementById('manInp').value.trim();
+  if(!v)return;
+  lookupBarcode(v);
+}
+
+function lookupBarcode(code){
+  lastScanned=code;
+  addHist(code);
+  publish({type:'scan',barcode:code});
+  const items=getItems();
+  const item=items.find(i=>i.id===code);
+  if(item){showFound(item,code);}
+  else{showMissing(code);}
+}
+
+function showFound(item,code){
+  const bc=item.status==='Available'?'ba':item.status==='Borrowed'?'bb':'bo';
+  const ph=item.photo?'<img src="'+item.photo+'" class="r-photo">':'';
+  document.getElementById('resultWrap').innerHTML=
+    '<div class="result-card found">'+
+    '<div class="r-tag">Found — '+esc(code)+'</div>'+
+    '<div class="r-name">'+esc(item.name)+'</div>'+ph+
+    '<div class="r-meta">'+esc(item.brand)+' '+esc(item.model)+'<br>Serial: '+esc(item.serial||'—')+'<br>Location: '+esc(item.location||'—')+'<br>Condition: '+esc(item.condition)+
+    (item.assignedTo?'<br>With: <strong style="color:var(--text)">'+esc(item.assignedTo)+'</strong>':'')+
+    (item.borrowedFrom?'<br>Source: '+esc(item.borrowedFrom):'')+
+    (item.notes?'<br>Notes: '+esc(item.notes):'')+
+    '</div><span class="r-badge '+bc+'">'+esc(item.status)+'</span>'+
+    '<div class="act-row">'+
+    '<button class="act-btn'+(item.status==='Borrowed'?'':' bl')+'" '+(item.status==='Borrowed'?'disabled':'')+' onclick="openCO(\''+esc(item.id)+'\',\''+item.name.replace(/'/g,"\\'")+'\')" >Check out</button>'+
+    '<button class="act-btn bl" onclick="openCI(\''+esc(item.id)+'\',\''+item.name.replace(/'/g,"\\'")+'\')">Check in</button>'+
+    '</div></div>';
+}
+
+function showMissing(code){
+  document.getElementById('nfTxt').textContent='"'+code+'" is not in your inventory. You can add it using the + Add new item button.';
+  document.getElementById('notFoundSheet').classList.add('open');
+  document.getElementById('resultWrap').innerHTML=
+    '<div class="result-card missing">'+
+    '<div class="r-tag">Not found</div>'+
+    '<div class="r-name" style="color:#93c5fd">'+esc(code)+'</div>'+
+    '<div class="r-meta">Not in inventory yet.</div>'+
+    '</div>';
+}
+
+// ── Checkout / Checkin ────────────────────────────────────────────────────────
+function openCO(id,name){pendingId=id;pendingName=name;document.getElementById('coItemName').textContent=name;document.getElementById('coName').value='';document.getElementById('coDate').value='';document.getElementById('coSheet').classList.add('open');}
+function doCheckout(){
+  const b=document.getElementById('coName').value.trim();
+  if(!b){toast('Enter borrower name','err');return;}
+  const items=getItems();const i=items.findIndex(x=>x.id===pendingId);
+  if(i!==-1){items[i].status='Borrowed';items[i].assignedTo=b;items[i].expectedReturn=document.getElementById('coDate').value;putItems(items);}
+  publish({type:'checkout',barcode:pendingId,borrower:b});
+  closeSheet('coSheet');toast('Checked out to '+b,'ok');
+  lookupBarcode(pendingId);
+}
+function openCI(id,name){pendingId=id;pendingName=name;document.getElementById('ciItemName').textContent='Return "'+name+'" to inventory?';document.getElementById('ciSheet').classList.add('open');}
+function doCheckin(){
+  const items=getItems();const i=items.findIndex(x=>x.id===pendingId);
+  if(i!==-1){items[i].status='Available';items[i].assignedTo='';items[i].expectedReturn='';putItems(items);}
+  publish({type:'checkin',barcode:pendingId});
+  closeSheet('ciSheet');toast('Checked in!','ok');
+  lookupBarcode(pendingId);
+}
+
+// ── Add item ──────────────────────────────────────────────────────────────────
+function openAddItem(){
+  addPhotoB64='';
+  ['aId','aName','aBrand','aModel','aSerial','aLoc','aNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aCat').value='Computer';document.getElementById('aCond').value='Good';
+  document.getElementById('photoThumb').style.display='none';document.getElementById('photoPrompt').style.display='block';document.getElementById('photoSub').style.display='block';
+  document.getElementById('addSheet').classList.add('open');
+}
+function handlePhoto(inp){
+  if(!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=function(e){
+    addPhotoB64=e.target.result;
+    const th=document.getElementById('photoThumb');
+    th.src=addPhotoB64;th.style.display='block';
+    document.getElementById('photoPrompt').style.display='none';
+    document.getElementById('photoSub').style.display='none';
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+function submitAdd(){
+  const id=document.getElementById('aId').value.trim();
+  const name=document.getElementById('aName').value.trim();
+  if(!id||!name){toast('Barcode ID and name required','err');return;}
+  const items=getItems();
+  items.push({
+    id,name,cat:document.getElementById('aCat').value,
+    brand:document.getElementById('aBrand').value.trim(),
+    model:document.getElementById('aModel').value.trim(),
+    serial:document.getElementById('aSerial').value.trim(),
+    condition:document.getElementById('aCond').value,
+    status:'Available',location:document.getElementById('aLoc').value.trim(),
+    borrowedFrom:'',notes:document.getElementById('aNotes').value.trim(),
+    assignedTo:'',expectedReturn:'',photo:addPhotoB64
+  });
+  putItems(items);
+  publish({type:'itemAdded',barcode:id,name});
+  closeSheet('addSheet');toast('Item added!','ok');
+}
+
+// ── Borrow sheet ──────────────────────────────────────────────────────────────
+function openBorrow(){
+  document.getElementById('bId').value='';document.getElementById('bName').value='';document.getElementById('bDate').value='';
+  document.getElementById('bAct').value='out';toggleBorrow();
+  document.getElementById('borrowSheet').classList.add('open');
+}
+function toggleBorrow(){document.getElementById('bExtra').style.display=document.getElementById('bAct').value==='out'?'':'none';}
+function doBorrow(){
+  const id=document.getElementById('bId').value.trim();
+  const items=getItems();const idx=items.findIndex(i=>i.id===id);
+  if(idx===-1){toast('Barcode not found: '+id,'err');return;}
+  if(document.getElementById('bAct').value==='out'){
+    const b=document.getElementById('bName').value.trim();
+    if(!b){toast('Enter borrower name','err');return;}
+    items[idx].status='Borrowed';items[idx].assignedTo=b;items[idx].expectedReturn=document.getElementById('bDate').value;
+    publish({type:'checkout',barcode:id,borrower:b});showToast2('Checked out to '+b,'ok');
+  }else{
+    items[idx].status='Available';items[idx].assignedTo='';items[idx].expectedReturn='';
+    publish({type:'checkin',barcode:id});toast('Checked in!','ok');
+  }
+  putItems(items);closeSheet('borrowSheet');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function copyLast(){navigator.clipboard.writeText(lastScanned).then(()=>toast('Copied: '+lastScanned,'ok')).catch(()=>toast(lastScanned));closeSheet('notFoundSheet');}
+function addHist(code){
+  const items=getItems();const item=items.find(i=>i.id===code);
+  const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  scanHist.unshift({code,name:item?item.name:'Unknown',time:t});
+  if(scanHist.length>10)scanHist.pop();
+  document.getElementById('histList').innerHTML=scanHist.map(h=>
+    '<div class="h-item"><div><div class="h-id">'+esc(h.code)+'</div><div class="h-name">'+esc(h.name)+'</div></div><div class="h-time">'+h.time+'</div></div>'
+  ).join('');
+}
+function closeSheet(id){document.getElementById(id).classList.remove('open');}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(type?' '+type:'');
+  clearTimeout(t._t);t._t=setTimeout(()=>{t.className='toast';},2800);
+}
+function showToast2(m,t){toast(m,t);}
+
+// Close sheets by tapping dark overlay bg
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+});
+
+// Auto-restore saved channel
+const saved=localStorage.getItem(CK2);
+if(saved){document.getElementById('chInp').value=saved;CHANNEL=saved;document.getElementById('pip').className='pip on';document.getElementById('pipTxt').textContent='Connected to '+saved;document.getElementById('dot').className='dot blue';}
+</script>
+</body>
+</html>

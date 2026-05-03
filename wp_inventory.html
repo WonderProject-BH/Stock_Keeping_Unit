@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Wonder Project — Inventory</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d0d0f;--surface:#18181c;--surface2:#222228;--border:#2e2e38;
+  --accent:#6366f1;--accent2:#8b5cf6;--success:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+  --text:#f4f4f5;--text2:#a1a1aa;--text3:#52525b;
+  --radius:14px;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;overflow-x:hidden}
+/* NAV */
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:90;height:56px}
+.nav-logo{font-size:16px;font-weight:700;letter-spacing:-.3px}
+.nav-logo span{color:var(--accent)}
+.nav-actions{display:flex;gap:8px;align-items:center}
+/* SYNC BAR */
+.sync-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sync-code{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent);letter-spacing:.08em}
+.sync-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.pip{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.pip.on{background:var(--success);box-shadow:0 0 6px var(--success)}
+.pip.connecting{background:var(--warn);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* BTNS */
+.btn{height:40px;padding:0 16px;border-radius:10px;border:none;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:opacity .15s}
+.btn:active{opacity:.7}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{height:32px;padding:0 12px;font-size:13px;border-radius:8px}
+/* MAIN */
+.main{padding:16px;max-width:900px;margin:0 auto}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 12px}
+.stat-n{font-size:28px;font-weight:700;line-height:1}
+.stat-l{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.c-green{color:var(--success)}.c-yellow{color:var(--warn)}.c-purple{color:var(--accent)}
+/* FILTERS */
+.filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap}
+.inp{height:40px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font);font-size:14px;padding:0 12px;width:100%}
+.inp:focus{outline:none;border-color:var(--accent)}
+.inp::placeholder{color:var(--text3)}
+.filter-bar .inp{flex:1;min-width:140px}
+/* TABLE */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:700px}
+th{background:var(--surface2);padding:10px 12px;text-align:left;font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.mono{font-family:var(--mono);font-size:12px}
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:500;white-space:nowrap}
+.b-avail{background:#14532d33;color:#4ade80;border:1px solid #16a34a44}
+.b-borrow{background:#78350f33;color:#fbbf24;border:1px solid #d9770644}
+.b-maint{background:#1e3a5f33;color:#60a5fa;border:1px solid #1d4ed844}
+.b-ret{background:#27272a;color:#71717a;border:1px solid #3f3f46}
+.b-excel{background:#14532d33;color:#4ade80;border:1px solid #16a34a44}
+.b-good{background:#1e3a5f33;color:#60a5fa;border:1px solid #1d4ed844}
+.b-fair{background:#78350f33;color:#fbbf24;border:1px solid #d9770644}
+.b-poor,.b-damaged{background:#450a0a33;color:#f87171;border:1px solid #ef444444}
+.acts{display:flex;gap:5px}
+.empty-state{padding:48px;text-align:center;color:var(--text3)}
+/* UNSAVED */
+.unsaved-bar{background:#2d1e0a;border-bottom:1px solid #78350f44;padding:10px 16px;display:none;align-items:center;justify-content:space-between;gap:10px}
+.unsaved-bar.show{display:flex}
+.unsaved-bar span{font-size:13px;color:var(--warn)}
+/* OVERLAY */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{background:#ffffff;border-radius:20px;padding:0;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;color:#111}
+.modal-head{padding:22px 24px 0;border-bottom:1px solid #e5e7eb;padding-bottom:16px}
+.modal-head h3{font-size:18px;font-weight:700;color:#111}
+.modal-body{padding:20px 24px}
+.modal-foot{padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end}
+.modal label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;margin-top:14px;text-transform:uppercase;letter-spacing:.04em}
+.modal label:first-child{margin-top:0}
+.modal .inp{background:#f9fafb;border-color:#d1d5db;color:#111;width:100%}
+.modal .inp:focus{border-color:#6366f1;background:#fff}
+.modal select.inp{appearance:none;-webkit-appearance:none}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.fg .full{grid-column:1/-1}
+.m-btn{height:44px;padding:0 20px;border-radius:10px;border:none;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.m-btn:active{opacity:.75}
+.m-btn-cancel{background:#f3f4f6;color:#374151}
+.m-btn-primary{background:#6366f1;color:#fff}
+.m-btn-success{background:#16a34a;color:#fff}
+.m-btn-danger{background:#dc2626;color:#fff}
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#111;color:#fff;font-size:14px;padding:10px 20px;border-radius:10px;z-index:999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+/* PHOTO PREVIEW */
+.photo-preview{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;margin-top:8px;border:1px solid #d1d5db;display:none}
+.photo-preview.show{display:block}
+/* PHONE NOTE */
+.phone-note{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;font-size:13px;color:var(--text2);line-height:1.6}
+.phone-note strong{color:var(--text)}
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .nav-logo{font-size:14px}
+  .btn{height:36px;font-size:13px}
+  .fg{grid-template-columns:1fr}
+  .fg .full{grid-column:1}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">Wonder <span>Project</span></div>
+  <div class="nav-actions">
+    <button class="btn btn-success btn-sm" onclick="saveData()">&#128190; Save</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportCSV()">&#8595; CSV</button>
+    <button class="btn btn-primary btn-sm" onclick="openAdd()">+ Add</button>
+  </div>
+</nav>
+
+<div class="sync-bar">
+  <div>
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Your sync channel — share with scanner app</div>
+    <div class="sync-code" id="chCode">Generating...</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="sync-status"><div class="pip" id="pip"></div><span id="pipTxt">Waiting</span></div>
+    <button class="btn btn-ghost btn-sm" onclick="copyChannel()">Copy code</button>
+  </div>
+</div>
+
+<div class="unsaved-bar" id="unsavedBar">
+  <span>&#9888; Unsaved changes</span>
+  <button class="btn btn-success btn-sm" onclick="saveData()">Save now</button>
+</div>
+
+<div class="main">
+  <div class="phone-note" id="scanNotice" style="display:none">
+    &#128247; <strong>Phone scan received:</strong> <span id="scanNoticeTxt"></span>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="sTotal">0</div><div class="stat-l">Total</div></div>
+    <div class="stat"><div class="stat-n c-green" id="sAvail">0</div><div class="stat-l">Available</div></div>
+    <div class="stat"><div class="stat-n c-yellow" id="sBorrow">0</div><div class="stat-l">Borrowed</div></div>
+    <div class="stat"><div class="stat-n c-purple" id="sCats">0</div><div class="stat-l">Categories</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <input class="inp" id="fText" placeholder="&#128269; Search name, barcode, person..." oninput="render()">
+    <select class="inp" id="fCat" onchange="render()" style="flex:0 0 160px"><option value="">All categories</option></select>
+    <select class="inp" id="fStat" onchange="render()" style="flex:0 0 140px">
+      <option value="">All statuses</option>
+      <option>Available</option><option>Borrowed</option><option>Maintenance</option><option>Retired</option>
+    </select>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Barcode</th><th>Item</th><th>Category</th><th>Brand / Model</th>
+          <th>Serial</th><th>Condition</th><th>Status</th><th>Assigned to</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty-state" id="empty" style="display:none">No items found</div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3 id="addTitle">Add new item</h3></div>
+    <div class="modal-body">
+      <div class="fg">
+        <div><label>Barcode ID *</label><input class="inp" id="fId" placeholder="e.g. BC-0011"></div>
+        <div><label>Item name *</label><input class="inp" id="fName" placeholder="e.g. Sony Camera"></div>
+        <div><label>Category</label>
+          <select class="inp" id="fCat2">
+            <option>Computer</option><option>Monitor</option><option>Camera</option><option>Mouse</option>
+            <option>Keyboard</option><option>Printer</option><option>Television</option><option>Tablet</option>
+            <option>Microphone</option><option>Stapler</option><option>Phone</option><option>Headphones</option>
+            <option>Cable</option><option>Lighting</option><option>Storage</option><option>Furniture</option><option>Other</option>
+          </select>
+        </div>
+        <div><label>Brand</label><input class="inp" id="fBrand" placeholder="e.g. Apple"></div>
+        <div><label>Model #</label><input class="inp" id="fModel" placeholder="e.g. MBP16-2023"></div>
+        <div><label>Serial #</label><input class="inp" id="fSerial" placeholder="e.g. C02XL..."></div>
+        <div><label>Condition</label>
+          <select class="inp" id="fCond"><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option><option>Damaged</option></select>
+        </div>
+        <div><label>Status</label>
+          <select class="inp" id="fStatus"><option>Available</option><option>Borrowed</option><option>Maintenance</option><option>Retired</option></select>
+        </div>
+        <div><label>Location</label><input class="inp" id="fLoc" placeholder="e.g. Studio A"></div>
+        <div><label>Borrowed from (source)</label><input class="inp" id="fSrc" placeholder="e.g. B&H Photo"></div>
+        <div class="full"><label>Notes</label><input class="inp" id="fNotes" placeholder="Optional notes"></div>
+        <div class="full">
+          <label>Photo</label>
+          <input type="file" accept="image/*" id="fPhoto" style="display:none" onchange="previewPhoto(this)">
+          <button type="button" class="btn btn-ghost" onclick="document.getElementById('fPhoto').click()">&#128247; Attach photo</button>
+          <img id="photoPreview" class="photo-preview">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="m-btn m-btn-cancel" onclick="closeAll()">Cancel</button>
+      <button class="m-btn m-btn-primary" onclick="saveItem()">Save item</button>
+    </div>
+  </div>
+</div>
+
+<!-- BORROW MODAL -->
+<div class="overlay" id="borrowOverlay">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head"><h3>Check out / return</h3></div>
+    <div class="modal-body">
+      <label>Barcode ID</label><input class="inp" id="bId" placeholder="Type barcode ID">
+      <label>Action</label>
+      <select class="inp" id="bAct" onchange="toggleBorrow()">
+        <option value="out">Check out (borrow)</option>
+        <option value="in">Check in (return)</option>
+      </select>
+      <div id="bExtra">
+        <label>Borrower name</label><input class="inp" id="bName" placeholder="Full name">
+        <label>Expected return</label><input class="inp" id="bDate" type="date">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="m-btn m-btn-cancel" onclick="closeAll()">Cancel</button>
+      <button class="m-btn m-btn-primary" onclick="doBorrow()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="overlay" id="delOverlay">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head"><h3>Delete item?</h3></div>
+    <div class="modal-body">
+      <p style="font-size:15px;color:#111;line-height:1.6">Delete <strong id="delName"></strong>?</p>
+      <p style="font-size:13px;color:#6b7280;margin-top:6px">This cannot be undone.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="m-btn m-btn-cancel" onclick="closeAll()">Cancel</button>
+      <button class="m-btn m-btn-danger" onclick="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE MODAL -->
+<div class="overlay" id="saveOverlay">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head"><h3>Saved &#10003;</h3></div>
+    <div class="modal-body">
+      <p style="font-size:15px;color:#111;line-height:1.6">Inventory saved to this browser. It will be here when you return.</p>
+      <p style="font-size:13px;color:#6b7280;margin-top:8px">Use Export CSV for an external backup.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="m-btn m-btn-cancel" onclick="closeAll()">Close</button>
+      <button class="m-btn m-btn-success" onclick="exportCSV();closeAll()">Export CSV too</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SK='wp_inv_v2', CK='wp_channel_v2';
+const CATS=['Computer','Monitor','Camera','Mouse','Keyboard','Printer','Television','Tablet','Microphone','Stapler','Phone','Headphones','Cable','Lighting','Storage','Furniture','Other'];
+let items=[], editIdx=null, delIdx=null, unsaved=false, photoB64='', bc=null;
+
+// ── Channel & BroadcastChannel sync ──────────────────────────────────────────
+function mkChannel(){
+  let c=localStorage.getItem(CK);
+  if(!c){c='WP-'+Math.random().toString(36).slice(2,5).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();localStorage.setItem(CK,c);}
+  return c;
+}
+const CHANNEL=mkChannel();
+document.getElementById('chCode').textContent=CHANNEL;
+
+// BroadcastChannel for cross-tab/same-device sync
+try{
+  bc=new BroadcastChannel('wp_sync_'+CHANNEL);
+  bc.onmessage=function(e){handleMsg(e.data);};
+  setPip('on','Scanner connected');
+}catch(ex){setPip('','Sync unavailable');}
+
+// Also poll localStorage for cross-page updates (works on phone)
+setInterval(function(){
+  const raw=localStorage.getItem('wp_msg_'+CHANNEL);
+  if(!raw)return;
+  const msg=JSON.parse(raw);
+  if(!msg._seen){msg._seen=true;localStorage.setItem('wp_msg_'+CHANNEL,JSON.stringify(msg));handleMsg(msg);}
+},500);
+
+function setPip(state,txt){
+  const p=document.getElementById('pip');
+  const t=document.getElementById('pipTxt');
+  p.className='pip'+(state?' '+state:'');
+  t.textContent=txt;
+}
+
+function handleMsg(msg){
+  if(!msg||!msg.type)return;
+  setPip('on','Phone connected — '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  if(msg.type==='scan'){
+    const item=items.find(i=>i.id===msg.barcode);
+    const n=document.getElementById('scanNotice');
+    const t=document.getElementById('scanNoticeTxt');
+    t.textContent=item?'"'+item.name+'" scanned — Status: '+item.status:'"'+msg.barcode+'" scanned — not in inventory';
+    n.style.display='block';
+    showToast('&#128247; Phone scan: '+(item?item.name:msg.barcode));
+    setTimeout(()=>{n.style.display='none';},8000);
+  }
+  if(msg.type==='checkout'){
+    const i=items.findIndex(x=>x.id===msg.barcode);
+    if(i!==-1){items[i].status='Borrowed';items[i].assignedTo=msg.borrower||'';markUnsaved();render();showToast('Checked out: '+items[i].name+' to '+msg.borrower);}
+  }
+  if(msg.type==='checkin'){
+    const i=items.findIndex(x=>x.id===msg.barcode);
+    if(i!==-1){items[i].status='Available';items[i].assignedTo='';items[i].expectedReturn='';markUnsaved();render();showToast('Checked in: '+items[i].name);}
+  }
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+const DEFAULTS=[
+  {id:'BC-0001',name:'MacBook Pro 16"',cat:'Computer',brand:'Apple',model:'MBP16-2023',serial:'C02XL0LNJGH5',condition:'Good',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'',location:'Studio A',notes:'',photo:''},
+  {id:'BC-0002',name:'Dell 27" Monitor',cat:'Monitor',brand:'Dell',model:'U2722D',serial:'CN-0ABC12',condition:'Good',status:'Borrowed',assignedTo:'John Martinez',expectedReturn:'2026-05-01',borrowedFrom:'',location:'Edit Bay 1',notes:'',photo:''},
+  {id:'BC-0003',name:'Sony FX3 Camera',cat:'Camera',brand:'Sony',model:'FX3',serial:'3042891',condition:'Excellent',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'B&H Photo',location:'Equipment Room',notes:'',photo:''},
+  {id:'BC-0004',name:'Logitech MX Master 3',cat:'Mouse',brand:'Logitech',model:'MX Master 3',serial:'2219038471',condition:'Good',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'',location:'Storage',notes:'',photo:''},
+  {id:'BC-0005',name:'HP LaserJet Printer',cat:'Printer',brand:'HP',model:'M404dn',serial:'VNC3K12345',condition:'Fair',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'',location:'Office',notes:'Needs toner',photo:''},
+  {id:'BC-0006',name:'LG 55" OLED TV',cat:'Television',brand:'LG',model:'OLED55C2',serial:'310MANG123',condition:'Excellent',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'',location:'Conference Room',notes:'',photo:''},
+  {id:'BC-0007',name:'Keychron K2 Pro Keyboard',cat:'Keyboard',brand:'Keychron',model:'K2 Pro',serial:'KC-22-003821',condition:'Good',status:'Borrowed',assignedTo:'Sara Lee',expectedReturn:'2026-05-02',borrowedFrom:'',location:'Studio B',notes:'',photo:''},
+  {id:'BC-0008',name:'Swingline Stapler',cat:'Stapler',brand:'Swingline',model:'747',serial:'N/A',condition:'Good',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'',location:'Supply Closet',notes:'',photo:''},
+  {id:'BC-0009',name:'iPad Pro 12.9"',cat:'Tablet',brand:'Apple',model:'iPad Pro M2',serial:'DMPL92LNJG8F',condition:'Excellent',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'',location:'Reception',notes:'',photo:''},
+  {id:'BC-0010',name:'Rode NT1 Microphone',cat:'Microphone',brand:'Rode',model:'NT1',serial:'R0231948',condition:'Good',status:'Available',assignedTo:'',expectedReturn:'',borrowedFrom:'',location:'Recording Room',notes:'',photo:''},
+];
+
+function load(){
+  try{const r=localStorage.getItem(SK);items=r?JSON.parse(r):JSON.parse(JSON.stringify(DEFAULTS));}
+  catch(e){items=JSON.parse(JSON.stringify(DEFAULTS));}
+}
+function saveData(){
+  localStorage.setItem(SK,JSON.stringify(items));
+  unsaved=false;document.getElementById('unsavedBar').classList.remove('show');
+  document.getElementById('saveOverlay').classList.add('open');
+  showToast('Saved!');
+}
+function markUnsaved(){unsaved=true;document.getElementById('unsavedBar').classList.add('show');}
+function copyChannel(){
+  navigator.clipboard.writeText(CHANNEL).then(()=>showToast('Copied: '+CHANNEL)).catch(()=>showToast(CHANNEL));
+}
+function exportCSV(){
+  const h=['ID','Name','Category','Brand','Model','Serial','Condition','Status','Assigned To','Return Date','Borrowed From','Location','Notes'];
+  const rows=items.map(i=>[i.id,i.name,i.cat,i.brand,i.model,i.serial,i.condition,i.status,i.assignedTo,i.expectedReturn,i.borrowedFrom,i.location,i.notes].map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
+  const csv=[h.join(','),...rows].join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='wonder_project_inventory.csv';a.click();
+  showToast('CSV downloaded!');
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+const BADGE_S={Available:'b-avail',Borrowed:'b-borrow',Maintenance:'b-maint',Retired:'b-ret'};
+const BADGE_C={Excellent:'b-excel',Good:'b-good',Fair:'b-fair',Poor:'b-poor',Damaged:'b-damaged'};
+function badge(v,map){return'<span class="badge '+(map[v]||'b-ret')+'">'+v+'</span>';}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function render(){
+  const txt=document.getElementById('fText').value.toLowerCase();
+  const cat=document.getElementById('fCat').value;
+  const st=document.getElementById('fStat').value;
+  const f=items.filter(i=>{
+    const m=!txt||[i.id,i.name,i.brand,i.serial,i.model,i.assignedTo,i.location,i.borrowedFrom].some(v=>(v||'').toLowerCase().includes(txt));
+    return m&&(!cat||i.cat===cat)&&(!st||i.status===st);
+  });
+  document.getElementById('sTotal').textContent=items.length;
+  document.getElementById('sAvail').textContent=items.filter(i=>i.status==='Available').length;
+  document.getElementById('sBorrow').textContent=items.filter(i=>i.status==='Borrowed').length;
+  document.getElementById('sCats').textContent=[...new Set(items.map(i=>i.cat))].length;
+  // cats dropdown
+  const cs=document.getElementById('fCat');const cv=cs.value;
+  cs.innerHTML='<option value="">All categories</option>'+CATS.map(c=>'<option'+(c===cv?' selected':'')+'>'+c+'</option>').join('');
+  const tb=document.getElementById('tbody');
+  const em=document.getElementById('empty');
+  if(!f.length){tb.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  tb.innerHTML=f.map(item=>{
+    const idx=items.indexOf(item);
+    const ph=item.photo?'<img src="'+item.photo+'" style="width:32px;height:32px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:6px">':'';
+    return'<tr><td class="mono">'+esc(item.id)+'</td><td>'+ph+esc(item.name)+'</td><td>'+esc(item.cat)+'</td>'+
+    '<td>'+esc(item.brand)+' '+esc(item.model)+'</td><td class="mono" style="font-size:11px">'+esc(item.serial)+'</td>'+
+    '<td>'+badge(item.condition,BADGE_C)+'</td><td>'+badge(item.status,BADGE_S)+'</td>'+
+    '<td style="color:var(--text2)">'+esc(item.assignedTo||'—')+'</td>'+
+    '<td><div class="acts">'+
+    '<button class="btn btn-ghost btn-sm" onclick="openEdit('+idx+')">Edit</button>'+
+    '<button class="btn btn-danger btn-sm" onclick="openDel('+idx+')">Delete</button>'+
+    '</div></td></tr>';
+  }).join('');
+}
+
+// ── Add / Edit ────────────────────────────────────────────────────────────────
+function openAdd(){
+  editIdx=null;photoB64='';
+  document.getElementById('addTitle').textContent='Add new item';
+  ['fId','fName','fBrand','fModel','fSerial','fLoc','fSrc','fNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fCat2').value='Computer';
+  document.getElementById('fCond').value='Good';
+  document.getElementById('fStatus').value='Available';
+  document.getElementById('photoPreview').className='photo-preview';
+  document.getElementById('fPhoto').value='';
+  document.getElementById('addOverlay').classList.add('open');
+}
+function openEdit(idx){
+  closeAll();editIdx=idx;const it=items[idx];photoB64=it.photo||'';
+  document.getElementById('addTitle').textContent='Edit item';
+  document.getElementById('fId').value=it.id;
+  document.getElementById('fName').value=it.name;
+  document.getElementById('fCat2').value=it.cat;
+  document.getElementById('fBrand').value=it.brand;
+  document.getElementById('fModel').value=it.model;
+  document.getElementById('fSerial').value=it.serial;
+  document.getElementById('fCond').value=it.condition;
+  document.getElementById('fStatus').value=it.status;
+  document.getElementById('fLoc').value=it.location;
+  document.getElementById('fSrc').value=it.borrowedFrom||'';
+  document.getElementById('fNotes').value=it.notes;
+  const pp=document.getElementById('photoPreview');
+  if(it.photo){pp.src=it.photo;pp.className='photo-preview show';}else{pp.className='photo-preview';}
+  document.getElementById('addOverlay').classList.add('open');
+}
+function previewPhoto(inp){
+  if(!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=function(e){
+    photoB64=e.target.result;
+    const pp=document.getElementById('photoPreview');
+    pp.src=photoB64;pp.className='photo-preview show';
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+function saveItem(){
+  const id=document.getElementById('fId').value.trim();
+  const name=document.getElementById('fName').value.trim();
+  if(!id||!name){showToast('Barcode ID and name required');return;}
+  const obj={
+    id,name,cat:document.getElementById('fCat2').value,
+    brand:document.getElementById('fBrand').value.trim(),
+    model:document.getElementById('fModel').value.trim(),
+    serial:document.getElementById('fSerial').value.trim(),
+    condition:document.getElementById('fCond').value,
+    status:document.getElementById('fStatus').value,
+    location:document.getElementById('fLoc').value.trim(),
+    borrowedFrom:document.getElementById('fSrc').value.trim(),
+    notes:document.getElementById('fNotes').value.trim(),
+    photo:photoB64,
+    assignedTo:editIdx!==null?items[editIdx].assignedTo:'',
+    expectedReturn:editIdx!==null?items[editIdx].expectedReturn:'',
+  };
+  if(editIdx!==null){items[editIdx]=obj;showToast('Item updated');}
+  else{items.push(obj);showToast('Item added');}
+  markUnsaved();closeAll();render();
+}
+
+// ── Borrow ────────────────────────────────────────────────────────────────────
+function openBorrow(){
+  document.getElementById('bId').value='';document.getElementById('bName').value='';document.getElementById('bDate').value='';
+  document.getElementById('bAct').value='out';toggleBorrow();
+  document.getElementById('borrowOverlay').classList.add('open');
+}
+function toggleBorrow(){document.getElementById('bExtra').style.display=document.getElementById('bAct').value==='out'?'':'none';}
+function doBorrow(){
+  const id=document.getElementById('bId').value.trim();
+  const idx=items.findIndex(i=>i.id===id);
+  if(idx===-1){showToast('Barcode not found: '+id);return;}
+  if(document.getElementById('bAct').value==='out'){
+    const b=document.getElementById('bName').value.trim();
+    if(!b){showToast('Enter borrower name');return;}
+    items[idx].status='Borrowed';items[idx].assignedTo=b;items[idx].expectedReturn=document.getElementById('bDate').value;
+    showToast('Checked out to '+b);
+  }else{
+    items[idx].status='Available';items[idx].assignedTo='';items[idx].expectedReturn='';
+    showToast('Checked in!');
+  }
+  markUnsaved();closeAll();render();
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+function openDel(idx){closeAll();delIdx=idx;document.getElementById('delName').textContent=items[idx].name;document.getElementById('delOverlay').classList.add('open');}
+function doDelete(){if(delIdx===null)return;const n=items[delIdx].name;items.splice(delIdx,1);markUnsaved();closeAll();render();showToast('"'+n+'" deleted');}
+
+function closeAll(){
+  ['addOverlay','borrowOverlay','delOverlay','saveOverlay'].forEach(id=>document.getElementById(id).classList.remove('open'));
+  editIdx=null;delIdx=null;
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.innerHTML=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+load();render();
+
+// Check out button in nav (phone-friendly)
+document.querySelector('.nav-actions').insertAdjacentHTML('beforeend','<button class="btn btn-ghost btn-sm" onclick="openBorrow()">Check out/in</button>');
+</script>
+</body>
+</html>
